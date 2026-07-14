@@ -1,0 +1,12 @@
+{
+  "name": "health-newsletter-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node generate.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.14"
+  }
+}
