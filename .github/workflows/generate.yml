@@ -1,0 +1,35 @@
+name: Health Content Generator
+
+on:
+  schedule:
+    # KST = UTC + 9
+    # 오전 9시 KST -> 00:00 UTC
+    - cron: '0 0 * * *'
+    # 오후 1시 KST -> 04:00 UTC
+    - cron: '0 4 * * *'
+  workflow_dispatch: {}   # 수동 실행 버튼 (테스트용)
+
+jobs:
+  generate-and-send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 의존성 설치
+        run: npm install
+        working-directory: scripts
+
+      - name: 콘텐츠 생성 및 이메일 발송
+        working-directory: scripts
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: node generate.js
