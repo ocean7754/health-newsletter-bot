@@ -3,30 +3,51 @@ name: Health Content Generator
 on:
   schedule:
     # KST = UTC + 9
-    # 오전 9시 KST -> 00:05 UTC
+
+    # 오전 9시 KST
     - cron: '5 0 * * *'
-    # 오전 11시 KST -> 02:05 UTC
+
+    # 오전 11시 KST
     - cron: '5 2 * * *'
-    # 오후 1시 KST -> 04:05 UTC
+
+    # 오후 1시 KST
     - cron: '5 4 * * *'
-  workflow_dispatch: {}   # 수동 실행 버튼 (테스트용)
+
+  # GitHub Actions 화면에서 수동 실행 버튼을 사용하기 위한 설정
+  workflow_dispatch: {}
+
+# 생성 이력 파일을 GitHub 저장소에 다시 저장할 수 있도록 권한 부여
+permissions:
+  contents: write
+
+# 이전 작업이 끝나기 전에 다음 작업이 겹쳐 실행되는 것을 방지
+concurrency:
+  group: health-content-generator
+  cancel-in-progress: false
 
 jobs:
   generate-and-send:
     runs-on: ubuntu-latest
+
     steps:
+      # GitHub 저장소 파일을 Actions 실행 환경으로 가져오기
       - name: 저장소 체크아웃
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # Node.js 설치
       - name: Node.js 설치
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      # scripts 폴더 안의 package.json을 기준으로 필요한 프로그램 설치
       - name: 의존성 설치
-        run: npm install
         working-directory: scripts
+        run: npm install
 
+      # scripts 폴더 안의 generate.js 실행
       - name: 콘텐츠 생성 및 이메일 발송
         working-directory: scripts
         env:
@@ -35,3 +56,18 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           MAIL_TO: ${{ secrets.MAIL_TO }}
         run: node generate.js
+
+      # generate.js가 수정한 content-history.json을 GitHub 저장소에 저장
+      - name: 생성 이력 저장
+        run: |
+          if git diff --quiet scripts/content-history.json; then
+            echo "저장할 새로운 생성 이력이 없습니다."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add scripts/content-history.json
+          git commit -m "chore: update content history [skip ci]"
+          git push
